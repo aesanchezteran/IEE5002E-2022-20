@@ -1,4 +1,8 @@
 // arm_single.v
+//
+// This version is modified for IEE5002E Programmable Systems at USFQ 
+// by asanchez @usfq.edu.ec
+// original version is from
 // David_Harris@hmc.edu and Sarah_Harris@hmc.edu 25 June 2013
 // Single-cycle implementation of a subset of ARMv4
 // 
@@ -6,7 +10,9 @@
 // Expect simulator to print "Simulation succeeded"
 // when the value 7 is written to address 100 (0x64)
 
+// This ARM Implementation includes:
 // 16 32-bit registers
+// 
 // Data-processing instructions
 //   ADD, SUB, AND, ORR
 //   INSTR<cond><S> rd, rn, #immediate
@@ -73,44 +79,6 @@
 //    1101  Signed less/equal             N != V | Z = 1
 //    1110  Always                        any
 
-module testbench();
-
-  logic        clk;
-  logic        reset;
-
-  logic [31:0] WriteData, DataAdr;
-  logic        MemWrite;
-
-  // instantiate device to be tested
-  top dut(clk, reset, WriteData, DataAdr, MemWrite);
-  
-  // initialize test
-  initial
-    begin
-      reset <= 1; # 22; reset <= 0;
-    end
-
-  // generate clock to sequence tests
-  always
-    begin
-      clk <= 1; # 5; clk <= 0; # 5;
-    end
-
-  // check results
-  always @(negedge clk)
-    begin
-      if(MemWrite) begin
-        if(DataAdr === 100 & WriteData === 7) begin
-          $display("Simulation succeeded");
-          $stop;
-        end else if (DataAdr !== 96) begin
-          $display("Simulation failed");
-          $stop;
-        end
-      end
-    end
-endmodule
-
 module top(input  logic        clk, reset, 
            output logic [31:0] WriteData, DataAdr, 
            output logic        MemWrite);
@@ -118,8 +86,7 @@ module top(input  logic        clk, reset,
   logic [31:0] PC, Instr, ReadData;
   
   // instantiate processor and memories
-  arm arm(clk, reset, PC, Instr, MemWrite, DataAdr, 
-          WriteData, ReadData);
+  arm arm(clk, reset, PC, Instr, MemWrite, DataAdr, WriteData, ReadData);
   imem imem(PC, Instr);
   dmem dmem(clk, MemWrite, DataAdr, WriteData, ReadData);
 endmodule
@@ -155,20 +122,11 @@ module arm(input  logic        clk, reset,
            input  logic [31:0] ReadData);
 
   logic [3:0] ALUFlags;
-  logic       RegWrite, 
-              ALUSrc, MemtoReg, PCSrc;
+  logic       RegWrite, ALUSrc, MemtoReg, PCSrc;
   logic [1:0] RegSrc, ImmSrc, ALUControl;
 
-  controller c(clk, reset, Instr[31:12], ALUFlags, 
-               RegSrc, RegWrite, ImmSrc, 
-               ALUSrc, ALUControl,
-               MemWrite, MemtoReg, PCSrc);
-  datapath dp(clk, reset, 
-              RegSrc, RegWrite, ImmSrc,
-              ALUSrc, ALUControl,
-              MemtoReg, PCSrc,
-              ALUFlags, PC, Instr,
-              ALUResult, WriteData, ReadData);
+  controller c(clk, reset, Instr[31:12], ALUFlags, RegSrc, RegWrite, ImmSrc, ALUSrc, ALUControl, MemWrite, MemtoReg, PCSrc);
+  datapath dp(clk, reset, RegSrc, RegWrite, ImmSrc, ALUSrc, ALUControl, MemtoReg, PCSrc, ALUFlags, PC, Instr, ALUResult, WriteData, ReadData);
 endmodule
 
 module controller(input  logic         clk, reset,
@@ -185,12 +143,8 @@ module controller(input  logic         clk, reset,
   logic [1:0] FlagW;
   logic       PCS, RegW, MemW;
   
-  decode dec(Instr[27:26], Instr[25:20], Instr[15:12],
-             FlagW, PCS, RegW, MemW,
-             MemtoReg, ALUSrc, ImmSrc, RegSrc, ALUControl);
-  condlogic cl(clk, reset, Instr[31:28], ALUFlags,
-               FlagW, PCS, RegW, MemW,
-               PCSrc, RegWrite, MemWrite);
+  decode dec(Instr[27:26], Instr[25:20], Instr[15:12], FlagW, PCS, RegW, MemW, MemtoReg, ALUSrc, ImmSrc, RegSrc, ALUControl);
+  condlogic cl(clk, reset, Instr[31:28], ALUFlags,FlagW, PCS, RegW, MemW, PCSrc, RegWrite, MemWrite);
 endmodule
 
 module decode(input  logic [1:0] Op,
@@ -222,8 +176,7 @@ module decode(input  logic [1:0] Op,
   	  default:              controls = 10'bx;          
   	endcase
 
-  assign {RegSrc, ImmSrc, ALUSrc, MemtoReg, 
-          RegW, MemW, Branch, ALUOp} = controls; 
+  assign {RegSrc, ImmSrc, ALUSrc, MemtoReg, RegW, MemW, Branch, ALUOp} = controls; 
           
   // ALU Decoder             
   always_comb
@@ -239,8 +192,7 @@ module decode(input  logic [1:0] Op,
 	// (C & V only updated for arith instructions)
       FlagW[1]      = Funct[0]; // FlagW[1] = S-bit
 	// FlagW[0] = S-bit & (ADD | SUB)
-      FlagW[0]      = Funct[0] & 
-        (ALUControl == 2'b00 | ALUControl == 2'b01); 
+      FlagW[0]      = Funct[0] & (ALUControl == 2'b00 | ALUControl == 2'b01); 
     end else begin
       ALUControl = 2'b00; // add for non-DP instructions
       FlagW      = 2'b00; // don't update Flags
@@ -331,16 +283,13 @@ module datapath(input  logic        clk, reset,
   // register file logic
   mux2 #(4)   ra1mux(Instr[19:16], 4'b1111, RegSrc[0], RA1);
   mux2 #(4)   ra2mux(Instr[3:0], Instr[15:12], RegSrc[1], RA2);
-  regfile     rf(clk, RegWrite, RA1, RA2,
-                 Instr[15:12], Result, PCPlus8, 
-                 SrcA, WriteData); 
+  regfile     rf(clk, RegWrite, RA1, RA2, Instr[15:12], Result, PCPlus8, SrcA, WriteData); 
   mux2 #(32)  resmux(ALUResult, ReadData, MemtoReg, Result);
   extend      ext(Instr[23:0], ImmSrc, ExtImm);
 
   // ALU logic
   mux2 #(32)  srcbmux(WriteData, ExtImm, ALUSrc, SrcB);
-  alu         alu(SrcA, SrcB, ALUControl, 
-                  ALUResult, ALUFlags);
+  alu #(32) alu(SrcA, SrcB, ALUControl, ALUResult, ALUFlags);
 endmodule
 
 module regfile(input  logic        clk, 
@@ -378,6 +327,35 @@ module extend(input  logic [23:0] Instr,
       default: ExtImm = 32'bx; // undefined
     endcase             
 endmodule
+
+
+module alu #(parameter N=32)(  
+           input logic [N-1:0] a, b, 
+           input logic [1:0] ALUControl, 
+           output logic [N-1:0] Result, 
+           output logic [3:0] ALUFlags); 
+           
+           logic [N-1:0] B; 
+           logic [N:0] sum; 
+           
+           assign B = ALUControl[0] ? (~b):b; 
+           
+           assign sum = a + (B + {{(N-1){1'b0}}, ALUControl[0]}); 
+                       
+           always_comb 
+                casez (ALUControl)
+                    2'b0?: Result = sum [N-1:0]; 
+                    2'b10: Result = a & b;
+                    2'b11: Result = a | b;
+                endcase
+         
+           assign ALUFlags[3] = Result[N-1];
+           assign ALUFlags[2] = &(~Result);
+           assign ALUFlags[1] = ~ALUControl[1] & sum[N];
+           assign ALUFlags[0] = ~(ALUControl[0]^a[N-1]^b[N-1]) & (a[N-1]^sum[N-1]) & (~ALUControl[1]);
+                                                                    
+endmodule 
+
 
 module adder #(parameter WIDTH=8)
               (input  logic [WIDTH-1:0] a, b,
