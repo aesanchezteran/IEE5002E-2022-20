@@ -4,8 +4,8 @@
 // ADD, SUB, AND, ORR, LDR, STR, B
 // If successful, it should write the value 7 to address 100
 
- MAIN	 SUB R0, R15, R15 	; R0 = 0				
-  		 ADD R2, R0, #5      	; R2 = 5             
+MAIN SUB R0, R15, R15 	; R0 = 0				
+     ADD R2, R0, #5      	; R2 = 5             
   		 ADD R3, R0, #12    	; R3 = 12            
   		 SUB R7, R3, #9    	; R7 = 3             
   		 ORR R4, R7, R2    	; R4 = 3 OR 5 = 7              	
