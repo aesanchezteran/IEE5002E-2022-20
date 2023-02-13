@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 // arm_single.v
 //
 // This version is modified for IEE5002E Programmable Systems at USFQ 
@@ -109,7 +110,7 @@ module imem(input  logic [31:0] a,
   logic [31:0] RAM[63:0];
 
   initial
-      $readmemh("memfile.dat",RAM);
+      $readmemh("memfile.mem",RAM);
 
   assign rd = RAM[a[31:2]]; // word aligned
 endmodule
@@ -391,4 +392,3 @@ module mux2 #(parameter WIDTH = 8)
 
   assign y = s ? d1 : d0; 
 endmodule
-
