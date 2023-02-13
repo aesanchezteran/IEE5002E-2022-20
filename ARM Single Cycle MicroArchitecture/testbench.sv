@@ -1,6 +1,6 @@
+`timescale 1ns / 1ps
+
 // Testbench module for ARM Single Cycle
-
-
 module testbench();
 
   logic        clk;
@@ -15,7 +15,7 @@ module testbench();
   // initialize test
   initial
     begin
-      reset <= 1; # 22; reset <= 0;
+      reset <= 1; # 17; reset <= 0;
     end
 
   // generate clock to sequence tests
