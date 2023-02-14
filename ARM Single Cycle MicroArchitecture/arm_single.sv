@@ -81,15 +81,15 @@
 //    1110  Always                        any
 
 module top(input  logic        clk, reset, 
-           output logic [31:0] WriteData, DataAdr, 
+	   output logic [31:0] WriteData, ALUResult, 
            output logic        MemWrite);
 
   logic [31:0] PC, Instr, ReadData;
   
   // instantiate processor and memories
-  arm arm(clk, reset, PC, Instr, MemWrite, DataAdr, WriteData, ReadData);
-  imem imem(PC, Instr);
-  dmem dmem(clk, MemWrite, DataAdr, WriteData, ReadData);
+	arm arm(clk, reset, PC, Instr, MemWrite, ALUResult, WriteData, ReadData);
+  	imem imem(PC, Instr);
+	dmem dmem(clk, MemWrite, ALUResult, WriteData, ReadData);
 endmodule
 
 module dmem(input  logic        clk, we,
